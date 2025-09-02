@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from app.security.security_headers import SecurityHeadersMiddleware
 from app.routes import router
 
-app = FastAPI()  # Define app first
+app = FastAPI()
 
 # Mount static files (for /static/Hguard-logo.png etc)
 app.mount("/static", StaticFiles(directory="static"), name="static")
