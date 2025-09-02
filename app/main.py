@@ -1,27 +1,35 @@
+import os
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-# from app.security.security_headers import SecurityHeadersMiddleware # <-- DIKOMENKAN
+# from app.security.security_headers import SecurityHeadersMiddleware # Biarkan ia dikomen buat masa ini
 from app.routes import router
 
-# 1. Cipta aplikasi FastAPI
+# --- Konfigurasi Path ---
+# Dapatkan direktori asas projek (root folder)
+BASE_DIR = Path(__file__).resolve().parent.parent
+# Tentukan path ke folder 'static'
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+# --- Cipta Aplikasi FastAPI ---
 app = FastAPI()
 
-# 2. Tambah middleware (DIPADAM BUAT SEMENTARA)
-# app.add_middleware(SecurityHeadersMiddleware) # <-- DIKOMENKAN
+# --- Middleware (dibiarkan tidak aktif untuk ujian) ---
+# app.add_middleware(SecurityHeadersMiddleware)
 
-# 3. Sertakan semua route dari file lain
+# --- Sertakan API Routes ---
 app.include_router(router)
 
-# 4. Mount folder 'static' untuk akses CSS, imej, dll.
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# --- Mount Static Files (dengan path yang tepat) ---
+# Ini akan pastikan FastAPI tahu di mana nak cari /static/Hguard-logo.png
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-# 5. Definisikan endpoint peringkat utama (seperti health check)
+# --- Endpoint Utama ---
 @app.get("/healthz")
 async def healthz():
     return {"ok": True}
 
-# 6. Definisikan handler untuk sebarang error yang tidak dijangka
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
