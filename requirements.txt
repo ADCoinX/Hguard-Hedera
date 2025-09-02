@@ -7,3 +7,4 @@ jinja2
 scikit-learn
 lxml
 prometheus-client
+httpx
