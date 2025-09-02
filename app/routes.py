@@ -6,7 +6,17 @@ from app.db.session import engine
 from app.models import ValidationLog
 from app.utils.crypto import safe_hash
 from sqlmodel import Session
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 import os
+
+router = APIRouter()
+templates = Jinja2Templates(directory="templates")
+
+@router.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 router = APIRouter()
 
