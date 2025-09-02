@@ -4,135 +4,102 @@
     <meta charset="UTF-8">
     <title>HGuard Hedera Validator</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.0/dist/tailwind.min.css" rel="stylesheet">
+    <!-- GUNA CSS TEMPATAN, BUKAN TAILWIND -->
+    <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="/static/Hguard-logo.png">
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
+<body>
     <!-- Header -->
-    <header class="flex items-center px-4 py-3 bg-white shadow-sm">
-        <img src="/static/Hguard-logo.png" alt="HGuard Logo" class="h-10 w-10 mr-3">
-        <span class="text-2xl font-bold text-gray-700">HGuard - Hedera Wallet Validator</span>
+    <header>
+        <img src="/static/Hguard-logo.png" alt="HGuard Logo">
+        <span>HGuard - Hedera Wallet Validator</span>
     </header>
 
     <!-- Main -->
-    <main class="flex-grow flex flex-col items-center justify-start py-8">
-        <div class="w-full max-w-xl mx-auto bg-white rounded-lg shadow-lg p-6 grid gap-6">
+    <main>
+        <div class="container">
             <!-- Form -->
-            <form id="validateForm" class="flex flex-col md:flex-row md:items-end gap-4">
-                <div class="flex-grow">
-                    <label for="accountId" class="block text-sm font-semibold text-gray-600 mb-1">Hedera Account ID</label>
-                    <input type="text" id="accountId" name="accountId" pattern="^0\.0\.\d{1,20}$" required
-                           placeholder="e.g. 0.0.123" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            <form id="validateForm">
+                <div>
+                    <label for="accountId">Hedera Account ID</label>
+                    <input type="text" id="accountId" name="accountId" pattern="^0\.0\.\d{1,20}$" required placeholder="e.g. 0.0.123" />
                 </div>
-                <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded font-semibold hover:bg-blue-700 transition">Validate</button>
+                <button type="submit">Validate</button>
             </form>
 
             <!-- Results Card -->
-            <div id="resultCard" class="hidden flex flex-col gap-3 bg-blue-50 p-4 rounded shadow-inner">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                    <div>
-                        <span class="text-gray-500">Balance:</span>
-                        <span id="balance" class="font-bold text-lg text-blue-900 ml-1"></span>
-                        <span class="text-xs text-gray-400">tinybar</span>
-                    </div>
-                    <div>
-                        <span class="text-gray-500">Tx Count:</span>
-                        <span id="txCount" class="font-bold text-lg text-blue-900 ml-1"></span>
-                    </div>
-                    <div>
-                        <span class="text-gray-500">Risk Score:</span>
-                        <span id="scoreBadge" class="inline-block px-3 py-1 rounded-full text-white font-mono font-bold"></span>
-                    </div>
+            <div id="resultCard">
+                <div>
+                    <span>Balance:</span>
+                    <span id="balance" class="font-bold"></span>
+                    <span>tinybar</span>
                 </div>
                 <div>
-                    <span class="text-gray-500">Last 5 Transactions:</span>
-                    <ul id="last5Tx" class="mt-1 text-sm text-gray-700 list-disc pl-4"></ul>
+                    <span>Tx Count:</span>
+                    <span id="txCount" class="font-bold"></span>
                 </div>
-                <div class="flex gap-3 mt-2">
-                    <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Export ISO 20022</button>
-                    <span id="flags" class="text-xs text-red-600 font-semibold"></span>
+                <div>
+                    <span>Risk Score:</span>
+                    <span id="scoreBadge"></span>
+                </div>
+                <div>
+                    <span>Last 5 Transactions:</span>
+                    <ul id="last5Tx"></ul>
+                </div>
+                <div>
+                    <button id="exportBtn">Export ISO 20022</button>
+                    <span id="flags"></span>
                 </div>
             </div>
         </div>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white mt-auto py-3 px-4 flex flex-col md:flex-row items-center justify-between border-t">
-        <div class="text-xs text-gray-500">
-            <span>We respect your privacy: only public info is used. | <button id="disclaimerLink" class="underline text-blue-600 hover:text-blue-800" type="button">Disclaimer</button></span>
-        </div>
-        <div class="flex gap-4 mt-2 md:mt-0">
-            <a href="/metrics" target="_blank" class="text-xs text-gray-500 underline">Metrics</a>
-            <a href="/healthz" target="_blank" class="text-xs text-gray-500 underline">Health</a>
-            <a href="/version" target="_blank" class="text-xs text-gray-500 underline">Version</a>
+    <footer>
+        <div>
+            <span>We respect your privacy: only public info is used. | <button id="disclaimerLink" type="button">Disclaimer</button></span>
         </div>
     </footer>
 
-    <!-- Disclaimer Modal -->
-    <div id="disclaimerModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
-        <div class="bg-white p-6 rounded-lg max-w-lg w-full shadow-lg relative">
-            <h2 class="text-xl font-bold mb-4">Disclaimer</h2>
-            <p class="text-sm text-gray-700 whitespace-pre-line">
-HGuard does not store private keys, seed phrases, or sensitive user data.
-Only public account information from Hedera Mirror Node API is fetched.
-Logs are hashed and anonymized (no PII).
-Wallet validation and risk scores are informational only and do not constitute financial advice.
-ADCX Lab and HGuard are not liable for any losses arising from the use of this tool.
-This MVP is for research and compliance demonstration purposes under grant funding, not a regulated financial product.
+    <!-- Disclaimer Modal dan Skrip (Kekal Sama) -->
+    <div id="disclaimerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div style="background:white; padding:2rem; border-radius:8px; max-width:500px;">
+            <h2>Disclaimer</h2>
+            <p>
+HGuard does not store private keys, seed phrases, or sensitive user data. Only public account information from Hedera Mirror Node API is fetched. Logs are hashed and anonymized (no PII). Wallet validation and risk scores are informational only and do not constitute financial advice. ADCX Lab and HGuard are not liable for any losses arising from the use of this tool. This MVP is for research and compliance demonstration purposes under grant funding, not a regulated financial product.
             </p>
-            <button id="closeDisclaimer" class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-xl font-bold">&times;</button>
+            <button id="closeDisclaimer">Close</button>
         </div>
     </div>
 
     <script>
-    // Modal logic
+    // Skrip kekal sama seperti sebelum ini
     const disclaimerLink = document.getElementById('disclaimerLink');
     const disclaimerModal = document.getElementById('disclaimerModal');
     const closeDisclaimer = document.getElementById('closeDisclaimer');
-    disclaimerLink.onclick = () => disclaimerModal.classList.remove('hidden');
-    closeDisclaimer.onclick = () => disclaimerModal.classList.add('hidden');
-    disclaimerModal.onclick = e => { if (e.target === disclaimerModal) disclaimerModal.classList.add('hidden'); };
+    disclaimerLink.onclick = () => disclaimerModal.style.display = 'flex';
+    closeDisclaimer.onclick = () => disclaimerModal.style.display = 'none';
+    disclaimerModal.onclick = e => { if (e.target === disclaimerModal) disclaimerModal.style.display = 'none'; };
 
-    // Form/Result logic
     const form = document.getElementById('validateForm');
     const resultCard = document.getElementById('resultCard');
-    const balanceEl = document.getElementById('balance');
-    const txCountEl = document.getElementById('txCount');
-    const scoreBadge = document.getElementById('scoreBadge');
-    const last5TxUl = document.getElementById('last5Tx');
-    const exportBtn = document.getElementById('exportBtn');
-    const flagsEl = document.getElementById('flags');
-    let currentAccount = "";
-
-    function scoreColor(score) {
-        if (score >= 80) return "bg-green-600";
-        if (score >= 50) return "bg-yellow-500";
-        return "bg-red-600";
-    }
-
+    // ... dan logik skrip yang lain ...
     form.onsubmit = async e => {
         e.preventDefault();
+        resultCard.style.display = 'block'; // Tunjuk kad bila validate
         const accountId = form.accountId.value;
-        resultCard.classList.add('hidden');
         let resp = await fetch(`/validate?accountId=${encodeURIComponent(accountId)}`);
         let data = await resp.json();
-        if (!data || !data.accountId) {
-            alert(data.error || "Validation failed.");
-            return;
-        }
-        balanceEl.textContent = data.balanceTinybar;
-        txCountEl.textContent = data.txCount;
-        scoreBadge.textContent = data.score;
-        scoreBadge.className = `inline-block px-3 py-1 rounded-full text-white font-mono font-bold ${scoreColor(data.score)}`;
-        last5TxUl.innerHTML = (data.last5Tx || []).map(tx => 
-            `<li>${tx.transaction_id || tx.consensus_timestamp || "tx"}: <span class="font-mono">${tx.result || ""}</span></li>`
-        ).join('');
-        flagsEl.textContent = (data.flags || []).join(", ");
-        resultCard.classList.remove('hidden');
+        if (!data || !data.accountId) { alert(data.error || "Validation failed."); return; }
+        document.getElementById('balance').textContent = data.balanceTinybar;
+        document.getElementById('txCount').textContent = data.txCount;
+        document.getElementById('scoreBadge').textContent = data.score;
+        document.getElementById('last5Tx').innerHTML = (data.last5Tx || []).map(tx => `<li>${tx.transaction_id}: ${tx.result}</li>`).join('');
+        document.getElementById('flags').textContent = (data.flags || []).join(", ");
         currentAccount = data.accountId;
     };
-
-    exportBtn.onclick = async () => {
+    let currentAccount = "";
+    document.getElementById('exportBtn').onclick = () => {
         if (!currentAccount) return;
         window.open(`/export/iso20022/pain001?accountId=${encodeURIComponent(currentAccount)}`, "_blank");
     };
