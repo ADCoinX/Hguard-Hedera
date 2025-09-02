@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlmodel
+httpx
+python-dotenv
+jinja2
+scikit-learn
+lxml
+prometheus-client
