@@ -4,48 +4,66 @@
     <meta charset="UTF-8">
     <title>HGuard Hedera Validator</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <!-- GUNA CSS TEMPATAN, BUKAN TAILWIND -->
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="/static/Hguard-logo.png">
+    <style>
+        /* Style untuk Modal Disclaimer */
+        #disclaimerModal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .modal-content h2 { margin-top: 0; }
+        .modal-content button {
+            background-color: #dc2626;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+    </style>
 </head>
 <body>
-    <!-- Header -->
     <header>
         <img src="/static/Hguard-logo.png" alt="HGuard Logo">
         <span>HGuard - Hedera Wallet Validator</span>
     </header>
 
-    <!-- Main -->
     <main>
         <div class="container">
-            <!-- Form -->
-            <form id="validateForm">
-                <div>
-                    <label for="accountId">Hedera Account ID</label>
-                    <input type="text" id="accountId" name="accountId" pattern="^0\.0\.\d{1,20}$" required placeholder="e.g. 0.0.123" />
-                </div>
-                <button type="submit">Validate</button>
-            </form>
+            <div class="card">
+                <form id="validateForm">
+                    <div>
+                        <label for="accountId">Hedera Account ID</label>
+                        <input type="text" id="accountId" name="accountId" pattern="^0\.0\.\d{1,20}$" required placeholder="e.g. 0.0.123" />
+                    </div>
+                    <button type="submit">Validate</button>
+                </form>
+            </div>
 
-            <!-- Results Card -->
-            <div id="resultCard">
-                <div>
-                    <span>Balance:</span>
-                    <span id="balance" class="font-bold"></span>
-                    <span>tinybar</span>
-                </div>
-                <div>
-                    <span>Tx Count:</span>
-                    <span id="txCount" class="font-bold"></span>
-                </div>
-                <div>
-                    <span>Risk Score:</span>
-                    <span id="scoreBadge"></span>
-                </div>
-                <div>
-                    <span>Last 5 Transactions:</span>
-                    <ul id="last5Tx"></ul>
-                </div>
+            <div id="resultCard" class="card">
+                <div><span>Balance:</span> <span id="balance" class="font-bold"></span></div>
+                <div><span>Tx Count (from last 100):</span> <span id="txCount" class="font-bold"></span></div>
+                <div><span>Risk Score:</span> <span id="scoreBadge" class="font-bold"></span></div>
+                <div><span>Last 5 Transactions:</span> <ul id="last5Tx"></ul></div>
                 <div>
                     <button id="exportBtn">Export ISO 20022</button>
                     <span id="flags"></span>
@@ -54,54 +72,84 @@
         </div>
     </main>
 
-    <!-- Footer -->
     <footer>
-        <div>
-            <span>We respect your privacy: only public info is used. | <button id="disclaimerLink" type="button">Disclaimer</button></span>
-        </div>
+        <p>We respect your privacy: only public info is used. | <a href="#" id="disclaimerLink" style="cursor:pointer; text-decoration:underline;">Disclaimer</a></p>
     </footer>
 
-    <!-- Disclaimer Modal dan Skrip (Kekal Sama) -->
-    <div id="disclaimerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
-        <div style="background:white; padding:2rem; border-radius:8px; max-width:500px;">
+    <!-- INI BAHAGIAN DISCLAIMER YANG HILANG -->
+    <div id="disclaimerModal">
+        <div class="modal-content">
             <h2>Disclaimer</h2>
-            <p>
-HGuard does not store private keys, seed phrases, or sensitive user data. Only public account information from Hedera Mirror Node API is fetched. Logs are hashed and anonymized (no PII). Wallet validation and risk scores are informational only and do not constitute financial advice. ADCX Lab and HGuard are not liable for any losses arising from the use of this tool. This MVP is for research and compliance demonstration purposes under grant funding, not a regulated financial product.
-            </p>
+            <p>HGuard does not store private keys, seed phrases, or sensitive user data. Only public account information from Hedera Mirror Node API is fetched. Logs are hashed and anonymized (no PII). Wallet validation and risk scores are informational only and do not constitute financial advice. ADCX Lab and HGuard are not liable for any losses arising from the use of this tool. This MVP is for research and compliance demonstration purposes under grant funding, not a regulated financial product.</p>
             <button id="closeDisclaimer">Close</button>
         </div>
     </div>
 
     <script>
-    // Skrip kekal sama seperti sebelum ini
-    const disclaimerLink = document.getElementById('disclaimerLink');
-    const disclaimerModal = document.getElementById('disclaimerModal');
-    const closeDisclaimer = document.getElementById('closeDisclaimer');
-    disclaimerLink.onclick = () => disclaimerModal.style.display = 'flex';
-    closeDisclaimer.onclick = () => disclaimerModal.style.display = 'none';
-    disclaimerModal.onclick = e => { if (e.target === disclaimerModal) disclaimerModal.style.display = 'none'; };
-
     const form = document.getElementById('validateForm');
     const resultCard = document.getElementById('resultCard');
-    // ... dan logik skrip yang lain ...
+    let currentAccount = "";
+
+    // --- LOGIK VALIDATE FORM ---
     form.onsubmit = async e => {
         e.preventDefault();
-        resultCard.style.display = 'block'; // Tunjuk kad bila validate
         const accountId = form.accountId.value;
-        let resp = await fetch(`/validate?accountId=${encodeURIComponent(accountId)}`);
-        let data = await resp.json();
-        if (!data || !data.accountId) { alert(data.error || "Validation failed."); return; }
-        document.getElementById('balance').textContent = data.balanceTinybar;
-        document.getElementById('txCount').textContent = data.txCount;
-        document.getElementById('scoreBadge').textContent = data.score;
-        document.getElementById('last5Tx').innerHTML = (data.last5Tx || []).map(tx => `<li>${tx.transaction_id}: ${tx.result}</li>`).join('');
-        document.getElementById('flags').textContent = (data.flags || []).join(", ");
-        currentAccount = data.accountId;
+        const button = form.querySelector('button');
+        button.textContent = 'Validating...';
+        button.disabled = true;
+
+        try {
+            const resp = await fetch(`/validate?accountId=${encodeURIComponent(accountId)}`);
+            const data = await resp.json();
+
+            if (!resp.ok) {
+                alert(data.detail || "Validation failed.");
+                resultCard.style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('balance').textContent = `${(data.balanceTinybar / 100_000_000).toLocaleString()} HBAR`;
+            document.getElementById('txCount').textContent = data.txCount;
+            document.getElementById('scoreBadge').textContent = `${data.score} / 100`;
+            document.getElementById('last5Tx').innerHTML = (data.last5Tx || [])
+                .map(tx => `<li>${tx.transaction_id}: ${tx.result}</li>`).join('');
+            document.getElementById('flags').textContent = (data.flags || []).join(", ");
+            
+            resultCard.style.display = 'block';
+            currentAccount = data.accountId;
+
+        } catch (err) {
+            alert("An error occurred. Please check the console.");
+            console.error(err);
+        } finally {
+            button.textContent = 'Validate';
+            button.disabled = false;
+        }
     };
-    let currentAccount = "";
+    
+    // --- LOGIK EXPORT BUTTON ---
     document.getElementById('exportBtn').onclick = () => {
         if (!currentAccount) return;
         window.open(`/export/iso20022/pain001?accountId=${encodeURIComponent(currentAccount)}`, "_blank");
+    };
+
+    // --- INI LOGIK DISCLAIMER YANG HILANG ---
+    const disclaimerLink = document.getElementById('disclaimerLink');
+    const disclaimerModal = document.getElementById('disclaimerModal');
+    const closeDisclaimer = document.getElementById('closeDisclaimer');
+
+    disclaimerLink.onclick = (e) => {
+        e.preventDefault();
+        disclaimerModal.style.display = 'flex';
+    };
+    closeDisclaimer.onclick = () => {
+        disclaimerModal.style.display = 'none';
+    };
+    // Tutup modal jika klik di luar kotak
+    window.onclick = (e) => {
+        if (e.target == disclaimerModal) {
+            disclaimerModal.style.display = 'none';
+        }
     };
     </script>
 </body>
