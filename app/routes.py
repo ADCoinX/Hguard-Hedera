@@ -21,15 +21,15 @@ ACCOUNT_ID_RE = re.compile(r"^0\.0\.\d{1,20}$")
 
 HTTPX_KW = dict(timeout=8.0, follow_redirects=False)
 
-# --- Route untuk UI (Homepage) ---
+# --- UI (Homepage) ---
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-# --- API VALIDATE (DIBAIKI) ---
+# --- API: VALIDATE ---
 @router.get("/validate")
 async def validate_account(accountId: str):
-    # FIX: regex validate (sonar: user-controlled path)
+    # Sanitize (fix Sonar: user-controlled path)
     if not accountId or not ACCOUNT_ID_RE.match(accountId):
         raise HTTPException(status_code=400, detail="Invalid Account ID format. Example: 0.0.123")
 
@@ -41,12 +41,12 @@ async def validate_account(accountId: str):
             account_resp.raise_for_status()
             account_data = account_resp.json() or {}
 
-            # 2) 100 transaksi terakhir
-            tx_url = (
-                f"{HEDERA_MIRROR_NODE_API}/api/v1/transactions"
-                f"?account.id={accountId}&limit=100&order=desc"
+            # 2) Transaksi terakhir (guna params, bukan f-string query)
+            tx_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/transactions"
+            tx_resp = await client.get(
+                tx_url,
+                params={"account.id": accountId, "limit": 100, "order": "desc"},
             )
-            tx_resp = await client.get(tx_url)
             tx_resp.raise_for_status()
             tx_data = tx_resp.json() or {}
 
@@ -55,13 +55,10 @@ async def validate_account(accountId: str):
                 raise HTTPException(status_code=404, detail=f"Account {accountId} not found.")
             raise HTTPException(status_code=502, detail="Mirror Node error")
         except Exception:
-            # FIX: fail-safe generic
             raise HTTPException(status_code=500, detail="Unexpected error")
 
     # --- Proses data (robust) ---
-    balance_tinybar = (
-        (account_data.get("balance") or {}).get("balance") or 0
-    )
+    balance_tinybar = (account_data.get("balance") or {}).get("balance") or 0
     transactions = tx_data.get("transactions") or []
     if not isinstance(transactions, list):
         transactions = []
@@ -69,17 +66,17 @@ async def validate_account(accountId: str):
     tx_count = len(transactions)
     last_5_tx = []
     for t in transactions[:5]:
-        # Normalise: hanya kunci yang diperlukan (elak shape pelik)
+        t = t or {}
         last_5_tx.append(
             {
-                "transaction_id": (t or {}).get("transaction_id", ""),
-                "result": (t or {}).get("result", ""),
-                "consensus_timestamp": (t or {}).get("consensus_timestamp", ""),
-                "name": (t or {}).get("name", ""),
+                "transaction_id": t.get("transaction_id", ""),
+                "result": t.get("result", ""),
+                "consensus_timestamp": t.get("consensus_timestamp", ""),
+                "name": t.get("name", ""),
             }
         )
 
-    # --- Skor risiko (simple, bounded) ---
+    # --- Skor risiko (bounded) ---
     score = 50
     flags = []
     try:
@@ -104,7 +101,7 @@ async def validate_account(accountId: str):
     score = max(0, min(100, score))
 
     return {
-        "accountId": accountId,
+        "accountId": accountId,  # sanitized
         "balanceTinybar": int(balance_tinybar),
         "txCount": tx_count,
         "score": score,
@@ -112,7 +109,7 @@ async def validate_account(accountId: str):
         "flags": flags,
     }
 
-# --- API EXPORT ISO (KEKAL + GUARD) ---
+# --- API: EXPORT ISO 20022 (pain.001) ---
 @router.get("/export/iso20022/pain001")
 async def export_iso(accountId: str):
     if not accountId or not ACCOUNT_ID_RE.match(accountId):
@@ -157,12 +154,10 @@ async def export_iso(accountId: str):
         headers={"Content-Disposition": f'attachment; filename="HGuard-Report-{accountId}.xml"'},
     )
 
-# --- METRIK LIVE (DIBAIKI) ---
+# --- METRICS (Prometheus) ---
 @router.get("/metrics")
 async def get_metrics(request: Request):
-    """
-    Prometheus plain-text. Elak crash bila state tiada.
-    """
+    """Prometheus plaintext; elak crash bila state tiada."""
     state = getattr(request.app, "state", None)
     metrics_data = getattr(state, "metrics", {}) if state else {}
     requests_total = int(metrics_data.get("requests_total", 0))
@@ -173,7 +168,7 @@ async def get_metrics(request: Request):
     ]
     return Response(content="\n".join(lines), media_type="text/plain; version=0.0.4")
 
-# --- VERSION (KEKAL SAMA) ---
+# --- VERSION ---
 @router.get("/version")
 async def get_version():
     return JSONResponse({"version": APP_VERSION, "timestamp": datetime.datetime.utcnow().isoformat()})
