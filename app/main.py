@@ -1,17 +1,16 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from app.security.security_headers import SecurityHeadersMiddleware
-from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from app.security.security_headers import SecurityHeadersMiddleware
 from app.routes import router
+
+app = FastAPI()  # Define app first
 
 # Mount static files (for /static/Hguard-logo.png etc)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-app = FastAPI()
+# Include API routes
 app.include_router(router)
-
-app = FastAPI()
 
 # Add security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
