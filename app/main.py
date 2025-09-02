@@ -1,14 +1,14 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from app.security.security_headers import SecurityHeadersMiddleware
+# from app.security.security_headers import SecurityHeadersMiddleware # <-- DIKOMENKAN
 from app.routes import router
 
 # 1. Cipta aplikasi FastAPI
 app = FastAPI()
 
-# 2. Tambah middleware (diproses untuk setiap request)
-app.add_middleware(SecurityHeadersMiddleware)
+# 2. Tambah middleware (DIPADAM BUAT SEMENTARA)
+# app.add_middleware(SecurityHeadersMiddleware) # <-- DIKOMENKAN
 
 # 3. Sertakan semua route dari file lain
 app.include_router(router)
