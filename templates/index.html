@@ -1,165 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>HGuard Hedera Validator</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="icon" href="/static/Hguard-logo.png">
-    <style>
-        /* Style untuk Modal Disclaimer */
-        #disclaimerModal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.6);
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-content {
-            background-color: #fff;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        .modal-content h2 { margin-top: 0; }
-        .modal-content button {
-            background-color: #dc2626;
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 0.375rem;
-            cursor: pointer;
-            margin-top: 1rem;
-        }
-
-        /* ===== TAMBAH INI SAHAJA ===== */
-        #last5Tx {
-            min-height: 110px; /* Paksa ketinggian minimum (anggaran 5 baris) */
-            padding-left: 20px; /* Jarak standard untuk senarai */
-            margin: 0;          /* Buang margin default */
-        }
-        /* ============================ */
-
-    </style>
+  <meta charset="UTF-8" />
+  <title>HGuard – Hedera Wallet Validator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="/static/Hguard-logo.png" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
+
 <body>
-    <!-- KESELURUHAN KOD HTML YANG LAIN KEKAL SAMA, TIDAK PERLU DIUBAH -->
+  <div class="shell">
     <header>
-        <img src="/static/Hguard-logo.png" alt="HGuard Logo">
-        <span>HGuard - Hedera Wallet Validator</span>
+      <img src="/static/Hguard-logo.png" alt="HGuard Logo" />
+      <div>
+        <div class="title">HGuard — Hedera Wallet Validator</div>
+        <span class="tag">Wallet Validation • Last 5 TX • ISO 20022 Export</span>
+      </div>
     </header>
 
-    <main>
-        <div class="container">
-            <div class="card">
-                <form id="validateForm">
-                    <div>
-                        <label for="accountId">Hedera Account ID</label>
-                        <input type="text" id="accountId" name="accountId" pattern="^0\.0\.\d{1,20}$" required placeholder="e.g. 0.0.123" />
-                    </div>
-                    <button type="submit">Validate</button>
-                </form>
-            </div>
+    <div class="grid">
+      <!-- FORM -->
+      <section class="card">
+        <form id="validateForm" autocomplete="off">
+          <label for="accountId">Hedera Account ID</label>
+          <input type="text" id="accountId" name="accountId" pattern="^0\.0\.\d{1,20}$" required placeholder="e.g. 0.0.98" />
+          <div class="actions">
+            <button type="submit" id="validateBtn">Validate Wallet</button>
+            <button type="button" class="btn-ghost" id="disclaimerLink">Disclaimer</button>
+          </div>
+        </form>
+      </section>
 
-            <div id="resultCard" class="card">
-                <div><span>Balance:</span> <span id="balance" class="font-bold"></span></div>
-                <div><span>Tx Count (from last 100):</span> <span id="txCount" class="font-bold"></span></div>
-                <div><span>Risk Score:</span> <span id="scoreBadge" class="font-bold"></span></div>
-                <div>
-                    <span>Last 5 Transactions:</span>
-                    <ul id="last5Tx"></ul> <!-- Bahagian ini yang akan tetap saiznya -->
-                </div>
-                <div>
-                    <button id="exportBtn">Export ISO 20022</button>
-                    <span id="flags"></span>
-                </div>
-            </div>
+      <!-- RESULT -->
+      <section id="resultCard" class="card" style="display:none">
+        <div class="kv">
+          <span class="label">Balance</span>
+          <span id="balance" class="value">—</span>
         </div>
-    </main>
-
-    <footer>
-        <p>We respect your privacy: only public info is used. | <a href="#" id="disclaimerLink" style="cursor:pointer; text-decoration:underline;">Disclaimer</a></p>
-    </footer>
-
-    <div id="disclaimerModal">
-        <div class="modal-content">
-            <h2>Disclaimer</h2>
-            <p>HGuard does not store private keys, seed phrases, or sensitive user data. Only public account information from Hedera Mirror Node API is fetched. Logs are hashed and anonymized (no PII). Wallet validation and risk scores are informational only and do not constitute financial advice. ADCX Lab and HGuard are not liable for any losses arising from the use of this tool. This MVP is for research and compliance demonstration purposes under grant funding, not a regulated financial product.</p>
-            <button id="closeDisclaimer">Close</button>
+        <div class="kv">
+          <span class="label">Tx Count (last 100)</span>
+          <span id="txCount" class="value">—</span>
         </div>
+        <div class="kv">
+          <span class="label">Risk Score</span>
+          <span id="scoreBadge" class="score">—</span>
+        </div>
+        <div class="kv" style="align-items:flex-start">
+          <span class="label" style="padding-top:6px">Last 5 Transactions</span>
+          <ul id="last5Tx" class="value" style="list-style:disc"> </ul>
+        </div>
+        <div class="actions" style="margin-top:12px">
+          <button type="button" id="exportBtn">Export ISO 20022 (XML)</button>
+          <span id="flags"></span>
+        </div>
+      </section>
     </div>
 
-    <script>
-    // SEMUA KOD SCRIPT KEKAL SAMA, TAK PERLU UBAH
-    const form = document.getElementById('validateForm');
-    const resultCard = document.getElementById('resultCard');
-    let currentAccount = "";
+    <footer>
+      We respect your privacy: only public info is used. |
+      <a href="/metrics">Metrics</a> · <a href="/healthz">Health</a> · <a href="/version">Version</a>
+    </footer>
+  </div>
 
-    form.onsubmit = async e => {
-        e.preventDefault();
-        const accountId = form.accountId.value;
-        const button = form.querySelector('button');
-        button.textContent = 'Validating...';
-        button.disabled = true;
+  <!-- Disclaimer Modal -->
+  <div id="disclaimerModal">
+    <div class="modal-content">
+      <h2>Disclaimer</h2>
+      <p>
+        HGuard does not store private keys, seed phrases, or sensitive user data. Only public account information from Hedera Mirror Node API is fetched. Logs are hashed and anonymized (no PII).
+        Wallet validation and risk scores are informational only and do not constitute financial advice. ADCX Lab and HGuard are not liable for any losses arising from the use of this tool. This MVP is for research and compliance demonstration purposes under grant funding, not a regulated financial product.
+      </p>
+      <div class="modal-actions">
+        <button class="btn-danger" id="closeDisclaimer">Close</button>
+      </div>
+    </div>
+  </div>
 
-        try {
-            const resp = await fetch(`/validate?accountId=${encodeURIComponent(accountId)}`);
-            const data = await resp.json();
-
-            if (!resp.ok) {
-                alert(data.detail || "Validation failed.");
-                resultCard.style.display = 'none';
-                return;
-            }
-            
-            document.getElementById('balance').textContent = `${(data.balanceTinybar / 100_000_000).toLocaleString()} HBAR`;
-            document.getElementById('txCount').textContent = data.txCount;
-            document.getElementById('scoreBadge').textContent = `${data.score} / 100`;
-            document.getElementById('last5Tx').innerHTML = (data.last5Tx || [])
-                .map(tx => `<li>${tx.transaction_id}: ${tx.result}</li>`).join('');
-            document.getElementById('flags').textContent = (data.flags || []).join(", ");
-            
-            resultCard.style.display = 'block';
-            currentAccount = data.accountId;
-
-        } catch (err) {
-            alert("An error occurred. Please check the console.");
-            console.error(err);
-        } finally {
-            button.textContent = 'Validate';
-            button.disabled = false;
-        }
-    };
-    
-    document.getElementById('exportBtn').onclick = () => {
-        if (!currentAccount) return;
-        window.open(`/export/iso20022/pain001?accountId=${encodeURIComponent(currentAccount)}`, "_blank");
-    };
-
-    const disclaimerLink = document.getElementById('disclaimerLink');
-    const disclaimerModal = document.getElementById('disclaimerModal');
-    const closeDisclaimer = document.getElementById('closeDisclaimer');
-
-    disclaimerLink.onclick = (e) => {
-        e.preventDefault();
-        disclaimerModal.style.display = 'flex';
-    };
-    closeDisclaimer.onclick = () => {
-        disclaimerModal.style.display = 'none';
-    };
-    window.onclick = (e) => {
-        if (e.target == disclaimerModal) {
-            disclaimerModal.style.display = 'none';
-        }
-    };
-    </script>
+  <script src="/static/script.js"></script>
 </body>
 </html>
