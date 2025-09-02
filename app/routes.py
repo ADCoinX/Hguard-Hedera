@@ -1,9 +1,10 @@
+import os
+import re
 import httpx
 import datetime
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
-import os
 from pathlib import Path
 
 # --- Konfigurasi ---
@@ -12,8 +13,13 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 
 router = APIRouter()
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
-APP_VERSION = "0.2.0" # Naikkan versi
+APP_VERSION = "0.2.0"  # Naikkan versi
 HEDERA_MIRROR_NODE_API = "https://mainnet-public.mirrornode.hedera.com"
+
+# Hedera account ID yang sah: 0.0.<digits>
+ACCOUNT_ID_RE = re.compile(r"^0\.0\.\d{1,20}$")
+
+HTTPX_KW = dict(timeout=8.0, follow_redirects=False)
 
 # --- Route untuk UI (Homepage) ---
 @router.get("/", response_class=HTMLResponse)
@@ -23,120 +29,149 @@ async def home(request: Request):
 # --- API VALIDATE (DIBAIKI) ---
 @router.get("/validate")
 async def validate_account(accountId: str):
-    if not accountId or not accountId.startswith("0.0."):
-        raise HTTPException(status_code=400, detail="Invalid Account ID format.")
+    # FIX: regex validate (sonar: user-controlled path)
+    if not accountId or not ACCOUNT_ID_RE.match(accountId):
+        raise HTTPException(status_code=400, detail="Invalid Account ID format. Example: 0.0.123")
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(**HTTPX_KW) as client:
         try:
-            # 1. Dapatkan maklumat akaun
-            account_resp = await client.get(f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}")
+            # 1) Maklumat akaun
+            acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}"
+            account_resp = await client.get(acc_url)
             account_resp.raise_for_status()
-            account_data = account_resp.json()
+            account_data = account_resp.json() or {}
 
-            # 2. Dapatkan 100 transaksi terakhir untuk kiraan yang betul
-            tx_resp = await client.get(f"{HEDERA_MIRROR_NODE_API}/api/v1/transactions?account.id={accountId}&limit=100&order=desc")
+            # 2) 100 transaksi terakhir
+            tx_url = (
+                f"{HEDERA_MIRROR_NODE_API}/api/v1/transactions"
+                f"?account.id={accountId}&limit=100&order=desc"
+            )
+            tx_resp = await client.get(tx_url)
             tx_resp.raise_for_status()
-            tx_data = tx_resp.json()
+            tx_data = tx_resp.json() or {}
 
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
+            if e.response is not None and e.response.status_code == 404:
                 raise HTTPException(status_code=404, detail=f"Account {accountId} not found.")
-            else:
-                raise HTTPException(status_code=500, detail=f"Failed to fetch data from Hedera Mirror Node: {e}")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+            raise HTTPException(status_code=502, detail="Mirror Node error")
+        except Exception:
+            # FIX: fail-safe generic
+            raise HTTPException(status_code=500, detail="Unexpected error")
 
-    # --- Proses data dengan logik yang lebih baik ---
-    balance_tinybar = account_data.get('balance', {}).get('balance', 0)
-    transactions = tx_data.get('transactions', [])
-    
-    # txCount kini betul (sehingga 100)
+    # --- Proses data (robust) ---
+    balance_tinybar = (
+        (account_data.get("balance") or {}).get("balance") or 0
+    )
+    transactions = tx_data.get("transactions") or []
+    if not isinstance(transactions, list):
+        transactions = []
+
     tx_count = len(transactions)
-    # last_5_tx adalah 5 yang pertama dari senarai
-    last_5_tx = transactions[:5]
+    last_5_tx = []
+    for t in transactions[:5]:
+        # Normalise: hanya kunci yang diperlukan (elak shape pelik)
+        last_5_tx.append(
+            {
+                "transaction_id": (t or {}).get("transaction_id", ""),
+                "result": (t or {}).get("result", ""),
+                "consensus_timestamp": (t or {}).get("consensus_timestamp", ""),
+                "name": (t or {}).get("name", ""),
+            }
+        )
 
-    # --- Logik skor risiko yang lebih baik ---
+    # --- Skor risiko (simple, bounded) ---
     score = 50
     flags = []
-    if balance_tinybar > 100_000_000 * 10: score += 10 # Lebih 10 HBAR
-    if tx_count > 50: score += 15 # Lebih aktif
-    elif tx_count > 10: score += 5
-    
-    failed_tx_count = sum(1 for tx in transactions if tx.get('result') != 'SUCCESS')
-    if failed_tx_count > 0:
-        score -= failed_tx_count * 5 # Tolak 5 mata untuk setiap tx gagal
-        flags.append("HAS_FAILED_TX")
-    
-    if account_data.get('key', {}).get('_type') == 'ProtobufEncoded':
-        flags.append("COMPLEX_KEY")
-        score += 5
+    try:
+        if balance_tinybar > 1_000_000_000:  # > 10 HBAR
+            score += 10
+        if tx_count > 50:
+            score += 15
+        elif tx_count > 10:
+            score += 5
 
-    score = max(0, min(100, score)) # Pastikan skor antara 0-100
+        failed_tx_count = sum(1 for tx in transactions if (tx or {}).get("result") != "SUCCESS")
+        if failed_tx_count > 0:
+            score -= min(failed_tx_count * 5, 30)  # cap penalti
+            flags.append("HAS_FAILED_TX")
+
+        if (account_data.get("key") or {}).get("_type") == "ProtobufEncoded":
+            flags.append("COMPLEX_KEY")
+            score += 5
+    except Exception:
+        flags.append("SCORE_FALLBACK")
+
+    score = max(0, min(100, score))
 
     return {
         "accountId": accountId,
-        "balanceTinybar": balance_tinybar,
+        "balanceTinybar": int(balance_tinybar),
         "txCount": tx_count,
         "score": score,
         "last5Tx": last_5_tx,
-        "flags": flags
+        "flags": flags,
     }
 
-# --- API EXPORT ISO (KEKAL SAMA, SUDAH BETUL) ---
+# --- API EXPORT ISO (KEKAL + GUARD) ---
 @router.get("/export/iso20022/pain001")
 async def export_iso(accountId: str):
-    # Dapatkan data akaun
-    async with httpx.AsyncClient() as client:
+    if not accountId or not ACCOUNT_ID_RE.match(accountId):
+        raise HTTPException(status_code=400, detail="Invalid Account ID format. Example: 0.0.123")
+
+    async with httpx.AsyncClient(**HTTPX_KW) as client:
         try:
-            account_resp = await client.get(f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}")
+            acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}"
+            account_resp = await client.get(acc_url)
             account_resp.raise_for_status()
-            account_data = account_resp.json()
+            account_data = account_resp.json() or {}
+        except httpx.HTTPStatusError as e:
+            if e.response is not None and e.response.status_code == 404:
+                raise HTTPException(status_code=404, detail=f"Account {accountId} not found.")
+            raise HTTPException(status_code=502, detail="Mirror Node error")
         except Exception:
-            return Response("Could not fetch account data to generate report.", media_type="text/plain", status_code=500)
+            raise HTTPException(status_code=500, detail="Unexpected error")
 
-    balance_hbar = account_data.get('balance', {}).get('balance', 0) / 100_000_000
+    balance_hbar = ((account_data.get("balance") or {}).get("balance") or 0) / 100_000_000
 
-    # Cipta kandungan XML
     xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03">
-    <CstmrCdtTrfInitn>
-        <GrpHdr>
-            <MsgId>HGUARD-RPT-{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}</MsgId>
-            <CreDtTm>{datetime.datetime.utcnow().isoformat()}</CreDtTm>
-            <NbOfTxs>1</NbOfTxs>
-        </GrpHdr>
-        <PmtInf>
-            <DbtrAcct>
-                <Id><Othr><Id>{accountId}</Id></Othr></Id>
-            </DbtrAcct>
-            <CdtTrfTxInf>
-                <Amt><InstdAmt Ccy="HBAR">{balance_hbar:.8f}</InstdAmt></Amt>
-                <RmtInf><Ustrd>HGuard AML/CFT Report for Hedera Account {accountId}</Ustrd></RmtInf>
-            </CdtTrfTxInf>
-        </PmtInf>
-    </CstmrCdtTrfInitn>
-</Document>"""
-    
-    return Response(content=xml_content, media_type="application/xml", headers={
-        "Content-Disposition": f"attachment; filename=HGuard-Report-{accountId}.xml"
-    })
+  <CstmrCdtTrfInitn>
+    <GrpHdr>
+      <MsgId>HGUARD-RPT-{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}</MsgId>
+      <CreDtTm>{datetime.datetime.utcnow().isoformat()}</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+    </GrpHdr>
+    <PmtInf>
+      <DbtrAcct><Id><Othr><Id>{accountId}</Id></Othr></Id></DbtrAcct>
+      <CdtTrfTxInf>
+        <Amt><InstdAmt Ccy="HBAR">{balance_hbar:.8f}</InstdAmt></Amt>
+        <RmtInf><Ustrd>HGuard AML/CFT Report for Hedera Account {accountId}</Ustrd></RmtInf>
+      </CdtTrfTxInf>
+    </PmtInf>
+  </CstmrCdtTrfInitn>
+</Document>""".strip()
+
+    return Response(
+        content=xml_content,
+        media_type="application/xml; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="HGuard-Report-{accountId}.xml"'},
+    )
 
 # --- METRIK LIVE (DIBAIKI) ---
 @router.get("/metrics")
 async def get_metrics(request: Request):
     """
-    Menyediakan metrik LIVE dalam format Prometheus.
+    Prometheus plain-text. Elak crash bila state tiada.
     """
-    metrics_data = request.app.state.metrics
-    requests_total = metrics_data.get("requests_total", 0)
-
-    prometheus_output = [
-        '# HELP hguard_requests_total Total number of HTTP requests made to the application.',
-        '# TYPE hguard_requests_total counter',
-        f'hguard_requests_total {requests_total}'
+    state = getattr(request.app, "state", None)
+    metrics_data = getattr(state, "metrics", {}) if state else {}
+    requests_total = int(metrics_data.get("requests_total", 0))
+    lines = [
+        "# HELP hguard_requests_total Total number of HTTP requests made to the application.",
+        "# TYPE hguard_requests_total counter",
+        f"hguard_requests_total {requests_total}",
     ]
-    
-    return Response(content="\n".join(prometheus_output), media_type="text/plain")
+    return Response(content="\n".join(lines), media_type="text/plain; version=0.0.4")
 
 # --- VERSION (KEKAL SAMA) ---
 @router.get("/version")
