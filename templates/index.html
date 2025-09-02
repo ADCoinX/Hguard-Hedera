@@ -39,9 +39,19 @@
             cursor: pointer;
             margin-top: 1rem;
         }
+
+        /* ===== TAMBAH INI SAHAJA ===== */
+        #last5Tx {
+            min-height: 110px; /* Paksa ketinggian minimum (anggaran 5 baris) */
+            padding-left: 20px; /* Jarak standard untuk senarai */
+            margin: 0;          /* Buang margin default */
+        }
+        /* ============================ */
+
     </style>
 </head>
 <body>
+    <!-- KESELURUHAN KOD HTML YANG LAIN KEKAL SAMA, TIDAK PERLU DIUBAH -->
     <header>
         <img src="/static/Hguard-logo.png" alt="HGuard Logo">
         <span>HGuard - Hedera Wallet Validator</span>
@@ -63,7 +73,10 @@
                 <div><span>Balance:</span> <span id="balance" class="font-bold"></span></div>
                 <div><span>Tx Count (from last 100):</span> <span id="txCount" class="font-bold"></span></div>
                 <div><span>Risk Score:</span> <span id="scoreBadge" class="font-bold"></span></div>
-                <div><span>Last 5 Transactions:</span> <ul id="last5Tx"></ul></div>
+                <div>
+                    <span>Last 5 Transactions:</span>
+                    <ul id="last5Tx"></ul> <!-- Bahagian ini yang akan tetap saiznya -->
+                </div>
                 <div>
                     <button id="exportBtn">Export ISO 20022</button>
                     <span id="flags"></span>
@@ -76,7 +89,6 @@
         <p>We respect your privacy: only public info is used. | <a href="#" id="disclaimerLink" style="cursor:pointer; text-decoration:underline;">Disclaimer</a></p>
     </footer>
 
-    <!-- INI BAHAGIAN DISCLAIMER YANG HILANG -->
     <div id="disclaimerModal">
         <div class="modal-content">
             <h2>Disclaimer</h2>
@@ -86,11 +98,11 @@
     </div>
 
     <script>
+    // SEMUA KOD SCRIPT KEKAL SAMA, TAK PERLU UBAH
     const form = document.getElementById('validateForm');
     const resultCard = document.getElementById('resultCard');
     let currentAccount = "";
 
-    // --- LOGIK VALIDATE FORM ---
     form.onsubmit = async e => {
         e.preventDefault();
         const accountId = form.accountId.value;
@@ -127,13 +139,11 @@
         }
     };
     
-    // --- LOGIK EXPORT BUTTON ---
     document.getElementById('exportBtn').onclick = () => {
         if (!currentAccount) return;
         window.open(`/export/iso20022/pain001?accountId=${encodeURIComponent(currentAccount)}`, "_blank");
     };
 
-    // --- INI LOGIK DISCLAIMER YANG HILANG ---
     const disclaimerLink = document.getElementById('disclaimerLink');
     const disclaimerModal = document.getElementById('disclaimerModal');
     const closeDisclaimer = document.getElementById('closeDisclaimer');
@@ -145,7 +155,6 @@
     closeDisclaimer.onclick = () => {
         disclaimerModal.style.display = 'none';
     };
-    // Tutup modal jika klik di luar kotak
     window.onclick = (e) => {
         if (e.target == disclaimerModal) {
             disclaimerModal.style.display = 'none';
