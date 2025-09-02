@@ -3,26 +3,34 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-# from app.security.security_headers import SecurityHeadersMiddleware # Biarkan ia dikomen buat masa ini
 from app.routes import router
 
-# --- Konfigurasi Path ---
+# --- Konfigurasi Path & DEBUGGING ---
 # Dapatkan direktori asas projek (root folder)
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Tentukan path ke folder 'static'
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
+# ===== PRINT STATEMENTS UNTUK DEBUGGING =====
+print("--- DEBUGGING PATHS ---")
+print(f"Current file (__file__): {__file__}")
+print(f"BASE_DIR yang dikira: {BASE_DIR}")
+print(f"STATIC_DIR yang dikira: {STATIC_DIR}")
+print(f"Adakah STATIC_DIR wujud? {os.path.exists(STATIC_DIR)}")
+if os.path.exists(STATIC_DIR):
+    print(f"Kandungan dalam STATIC_DIR: {os.listdir(STATIC_DIR)}")
+else:
+    print("Folder STATIC_DIR tidak dijumpai di path tersebut.")
+print("--- TAMAT DEBUGGING ---")
+# ==========================================
+
 # --- Cipta Aplikasi FastAPI ---
 app = FastAPI()
-
-# --- Middleware (dibiarkan tidak aktif untuk ujian) ---
-# app.add_middleware(SecurityHeadersMiddleware)
 
 # --- Sertakan API Routes ---
 app.include_router(router)
 
-# --- Mount Static Files (dengan path yang tepat) ---
-# Ini akan pastikan FastAPI tahu di mana nak cari /static/Hguard-logo.png
+# --- Mount Static Files ---
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # --- Endpoint Utama ---
