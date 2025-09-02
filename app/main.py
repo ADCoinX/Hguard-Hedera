@@ -2,7 +2,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from app.security.security_headers import SecurityHeadersMiddleware
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.routes import router
+
+# Mount static files (for /static/Hguard-logo.png etc)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app = FastAPI()
 app.include_router(router)
