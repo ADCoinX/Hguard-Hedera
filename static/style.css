@@ -35,8 +35,28 @@ header{
   text-align:center;
 }
 header img{ height:42px; width:auto; border-radius:10px }
-header .title{ font-weight:700; font-size:22px; }
-header .tag{ display:block; font-weight:600; font-size:12px; color:var(--muted); margin-top:2px; }
+
+/* ====== HGuard Title & Tagline ====== */
+header .title {
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  color: #ffffff !important;  /* putih solid */
+  text-shadow: 0 0 8px rgba(0,0,0,0.7);
+}
+header .title .brand {
+  background: linear-gradient(90deg, var(--accent) 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+header .tag {
+  display:block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top:4px;
+  color:#ffffff !important;
+  text-shadow: 0 0 6px rgba(0,0,0,0.6);
+}
 
 .grid{ display:grid; grid-template-columns:1fr; gap:14px; }
 
