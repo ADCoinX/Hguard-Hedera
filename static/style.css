@@ -113,3 +113,12 @@ footer a{ color:#8ddfc3; text-decoration:underline }
 .modal-content p{ color:var(--muted); line-height:1.55 }
 .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:14px }
 .btn-danger{ background:var(--danger); color:#fff }
+
+/* === Footer status pills === */
+footer .pill{
+  padding:2px 6px; border-radius:6px; font-weight:600; text-decoration:none;
+}
+footer .ok{   background:rgba(16,185,129,.14); color:#34d399; }
+footer .warn{ background:rgba(245,158,11,.16); color:#fbbf24; }
+footer .err{  background:rgba(239, 68, 68,.16); color:#f87171; }
+footer .dot{ opacity:.55 }
