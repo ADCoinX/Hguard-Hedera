@@ -36,10 +36,11 @@ def _train_if_needed() -> None:
             dtype=float,
         )
 
+        # FIX: Provide a seed for the random_state parameter for reproducibility
         _clf = IsolationForest(
             n_estimators=100,
             contamination=max(0.0, min(ML_CONTAMINATION, 0.5)),
-            random_state=ML_RANDOM_SEED,
+            random_state=ML_RANDOM_SEED,  # always use a fixed seed
             n_jobs=1,
         )
         _clf.fit(train_data)
