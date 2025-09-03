@@ -1,6 +1,7 @@
-📖 README.md (HGuard – Hedera Wallet Validator)
-
 # HGuard – Hedera Wallet Validator 🔒
+
+**Current Date and Time (UTC):** 2025-09-03 03:06:23  
+**Current User's Login:** ADCoinX
 
 **HGuard** is a minimal viable product (MVP) built on the **Hedera Hashgraph** network.  
 It provides **wallet validation**, **risk scoring**, and **ISO 20022 XML export** for compliance and audit use cases.
@@ -32,65 +33,110 @@ Developed by [ADCX Lab](https://autodigitalcoin.com).
 ```bash
 git clone https://github.com/ADCoinX/Hguard-Hedera.git
 cd Hguard-Hedera
+```
 
-Setup Environment
-
+### Setup Environment
+```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+```
 
-Run Locally
-
+### Run Locally
+```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
 👉 UI available at: http://localhost:8000
 
 ⸻
 
-⚙️ Environment Variables
+## 🔌 Architecture Diagram
 
-APP_ENV=production
-LOG_LEVEL=info
-LOG_SALT=your_secret_salt
-PRIMARY_MIRROR_BASE=https://mainnet-public.mirrornode.hedera.com
-CB_FAILURE_THRESHOLD=5
-CB_RESET_SECONDS=30
-RATE_LIMIT_RPS=10
-ML_ENABLED=false
+```
+                                 +-------------------+
+                                 |                   |
+  +-----------------+            |   Hedera Network  |
+  |                 |            |                   |
+  |  User/Browser   |            +-------------------+
+  |                 |                     |
+  +-----------------+                     |
+          |                               |
+          v                               v
+  +-----------------+            +-------------------+
+  |                 |  API Call  |                   |
+  |  HGuard FastAPI |<---------->| Hedera Mirror API |
+  |  Application    |            |                   |
+  |                 |            +-------------------+
+  +-----------------+
+          |
+          v
+  +-----------------------------+
+  |                             |
+  |  ISO 20022 XML Generation   |
+  |  - pain.001 format          |
+  |  - Wallet validation        |
+  |  - Risk scoring             |
+  |                             |
+  +-----------------------------+
+```
 
+HGuard follows a simple, stateless architecture:
+
+1. **Client Side**: Browser sends request with Hedera Account ID
+2. **HGuard Server**: FastAPI application processes the request
+3. **External API**: Application fetches live data from Hedera Mirror Node API
+4. **Processing**: Risk scoring and validation logic is applied
+5. **Response**: Results are returned to client or formatted as ISO 20022 XML
+
+This architecture ensures high performance, security, and reliability with minimal infrastructure requirements.
 
 ⸻
 
-📡 API Endpoints
+## ⚙️ Environment Variables
 
-Endpoint	Description
-/	UI Homepage
-/validate?accountId=0.0.xxxx	Validate Hedera wallet
-/export/iso20022/pain001?accountId=0.0.xxxx	Export ISO 20022 XML
-/metrics	Prometheus metrics
-/version	API version & timestamp
-
+APP_ENV=production  
+LOG_LEVEL=info  
+LOG_SALT=your_secret_salt  
+PRIMARY_MIRROR_BASE=https://mainnet-public.mirrornode.hedera.com  
+CB_FAILURE_THRESHOLD=5  
+CB_RESET_SECONDS=30  
+RATE_LIMIT_RPS=10  
+ML_ENABLED=false  
 
 ⸻
 
-🛡️ Security & InfoSec
+## 📡 API Endpoints
 
-HGuard was designed to be lightweight, stateless, and secure:
-	•	No private keys / seeds / PII stored – only public blockchain data is processed
-	•	TLS 1.3 + HSTS enforced at deployment (Render/HTTPS)
-	•	Secure headers middleware (X-Content-Type-Options, X-Frame-Options, CSP)
-	•	Rate limiting and circuit breaker to prevent API abuse
-	•	SonarQube Scans – fixed code smells, validated against CWE standards
-	•	GDPR-friendly – no personally identifiable data retained
-	•	ISO 20022 XML output – audit-ready compliance format
+Endpoint | Description  
+---|---  
+/ | UI Homepage  
+/validate?accountId=0.0.xxxx | Validate Hedera wallet  
+/export/iso20022/pain001?accountId=0.0.xxxx | Export ISO 20022 XML  
+/metrics | Prometheus metrics  
+/version | API version & timestamp  
 
-This MVP is for research and compliance demonstration only.
+⸻
+
+## 🛡️ Security & InfoSec
+
+HGuard was designed to be lightweight, stateless, and secure:  
+- No private keys / seeds / PII stored – only public blockchain data is processed  
+- TLS 1.3 + HSTS enforced at deployment (Render/HTTPS)  
+- Secure headers middleware (X-Content-Type-Options, X-Frame-Options, CSP)  
+- Rate limiting and circuit breaker to prevent API abuse  
+- SonarQube Scans – fixed code smells, validated against CWE standards  
+- GDPR-friendly – no personally identifiable data retained  
+- ISO 20022 XML output – audit-ready compliance format  
+
+This MVP is for research and compliance demonstration only.  
 It is not a financial product and should not be used for investment decisions.
 
 ⸻
 
-📂 Example ISO 20022 Export
+## 📂 Example ISO 20022 Export
 
+```xml
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03">
   <CstmrCdtTrfInitn>
     <GrpHdr>
@@ -107,11 +153,11 @@ It is not a financial product and should not be used for investment decisions.
     </PmtInf>
   </CstmrCdtTrfInitn>
 </Document>
-
+```
 
 ⸻
 
-📎 Quick Copy Buttons (Optional for Docs UI)
+## 📎 Quick Copy Buttons (Optional for Docs UI)
 
 👉 Clone repo:
 
@@ -125,10 +171,47 @@ It is not a financial product and should not be used for investment decisions.
 📋 Copy Run Command
 </button>
 
+⸻
+
+## ⚖️ Disclaimer
+
+- This MVP is for research and compliance demonstration purposes only.
+- No private keys, seed phrases, or PII are stored or processed.
+- Outputs, including risk scoring, are informational and **not** financial advice.
+- ADCX Lab and HGuard are not liable for any loss or damages arising from use of this tool.
+- The ISO 20022 XML export is for compliance and audit demonstration; it is **not** a regulated product.
 
 ⸻
 
-✍️ Built with ❤️ by ADCX Lab
+## 📄 License (MIT)
+
+```
+MIT License
+
+Copyright (c) 2025 ADCX Lab
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+⸻
+
+✍️ Built with ❤️ by ADCX Lab  
 (Pioneers of CryptoGuard, AssetGuard AI, GuardianX)
 
 ---
@@ -138,4 +221,6 @@ This version is **grant-ready**:
 - InfoSec section ✅  
 - ISO compliance ✅  
 - Developer quick-start ✅  
-
+- Architecture diagram ✅  
+- Disclaimer ✅  
+- MIT License ✅  
