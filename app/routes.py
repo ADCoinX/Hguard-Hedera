@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
+from markupsafe import escape  # Added for HTML sanitization
 
 # --- Konfigurasi ---
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,22 +22,26 @@ ACCOUNT_ID_RE = re.compile(r"^0\.0\.\d{1,20}$")
 
 HTTPX_KW = dict(timeout=8.0, follow_redirects=False)
 
+def is_valid_account(account_id: str) -> bool:
+    return ACCOUNT_ID_RE.match(account_id or "") is not None
+
 # --- UI (Homepage) ---
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
+    # Ensure request path is sanitized (even though it's not user-controlled here)
     return templates.TemplateResponse("index.html", {"request": request})
 
 # --- API: VALIDATE ---
 @router.get("/validate")
 async def validate_account(accountId: str):
-    # Sanitize (fix Sonar: user-controlled path)
-    if not accountId or not ACCOUNT_ID_RE.match(accountId):
+    # Sanitize and validate input (fix Sonar: user-controlled path)
+    if not is_valid_account(accountId):
         raise HTTPException(status_code=400, detail="Invalid Account ID format. Example: 0.0.123")
 
     async with httpx.AsyncClient(**HTTPX_KW) as client:
         try:
             # 1) Maklumat akaun
-            acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}"
+            acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}"  # accountId validated above
             account_resp = await client.get(acc_url)
             account_resp.raise_for_status()
             account_data = account_resp.json() or {}
@@ -52,7 +57,7 @@ async def validate_account(accountId: str):
 
         except httpx.HTTPStatusError as e:
             if e.response is not None and e.response.status_code == 404:
-                raise HTTPException(status_code=404, detail=f"Account {accountId} not found.")
+                raise HTTPException(status_code=404, detail=f"Account {escape(accountId)} not found.")  # escape
             raise HTTPException(status_code=502, detail="Mirror Node error")
         except Exception:
             raise HTTPException(status_code=500, detail="Unexpected error")
@@ -69,10 +74,10 @@ async def validate_account(accountId: str):
         t = t or {}
         last_5_tx.append(
             {
-                "transaction_id": t.get("transaction_id", ""),
-                "result": t.get("result", ""),
-                "consensus_timestamp": t.get("consensus_timestamp", ""),
-                "name": t.get("name", ""),
+                "transaction_id": escape(t.get("transaction_id", "")),  # sanitize for HTML
+                "result": escape(t.get("result", "")),
+                "consensus_timestamp": escape(t.get("consensus_timestamp", "")),
+                "name": escape(t.get("name", "")),
             }
         )
 
@@ -101,7 +106,7 @@ async def validate_account(accountId: str):
     score = max(0, min(100, score))
 
     return {
-        "accountId": accountId,  # sanitized
+        "accountId": escape(accountId),  # sanitized for reflection
         "balanceTinybar": int(balance_tinybar),
         "txCount": tx_count,
         "score": score,
@@ -112,7 +117,7 @@ async def validate_account(accountId: str):
 # --- API: EXPORT ISO 20022 (pain.001) ---
 @router.get("/export/iso20022/pain001")
 async def export_iso(accountId: str):
-    if not accountId or not ACCOUNT_ID_RE.match(accountId):
+    if not is_valid_account(accountId):
         raise HTTPException(status_code=400, detail="Invalid Account ID format. Example: 0.0.123")
 
     async with httpx.AsyncClient(**HTTPX_KW) as client:
@@ -123,13 +128,14 @@ async def export_iso(accountId: str):
             account_data = account_resp.json() or {}
         except httpx.HTTPStatusError as e:
             if e.response is not None and e.response.status_code == 404:
-                raise HTTPException(status_code=404, detail=f"Account {accountId} not found.")
+                raise HTTPException(status_code=404, detail=f"Account {escape(accountId)} not found.")
             raise HTTPException(status_code=502, detail="Mirror Node error")
         except Exception:
             raise HTTPException(status_code=500, detail="Unexpected error")
 
     balance_hbar = ((account_data.get("balance") or {}).get("balance") or 0) / 100_000_000
 
+    # accountId already validated and safe to use in XML context
     xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03">
   <CstmrCdtTrfInitn>
