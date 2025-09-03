@@ -12,6 +12,7 @@
 
 <body>
   <div class="shell">
+    <!-- HEADER -->
     <header style="display:flex;flex-direction:column;align-items:center;justify-content:center;margin:2rem auto;text-align:center;">
       <img src="/static/Hguard-logo.png" alt="HGuard Logo" style="width:220px;height:auto;margin-bottom:1rem;">
       <div>
@@ -27,11 +28,13 @@
     <div class="grid">
       <!-- FORM -->
       <section class="card">
-        <form id="validateForm" autocomplete="off">
+        <form id="validateForm" autocomplete="off" novalidate action="javascript:void(0)">
           <label for="accountId">Hedera Account ID</label>
-          <input type="text" id="accountId" name="accountId" pattern="^0\.0\.\d{1,20}$" required placeholder="e.g. 0.0.98" />
+          <input type="text" id="accountId" name="accountId"
+                 pattern="^0\.0\.\d{1,20}$"
+                 required placeholder="e.g. 0.0.98" />
           <div class="actions">
-            <button type="submit" id="validateBtn">Validate Wallet</button>
+            <button type="button" id="validateBtn">Validate Wallet</button>
             <button type="button" class="btn-ghost" id="disclaimerLink">Disclaimer</button>
           </div>
         </form>
@@ -66,11 +69,17 @@
     <footer>
       <span>We respect your privacy: only public info is used.</span>
       <br />
-      <a id="status-health"  class="pill" href="/health"  target="_blank" rel="noopener">Health: <strong>Checking…</strong></a>
+      <a id="status-health"  class="pill" href="/health"  target="_blank" rel="noopener">
+        Health: <strong>Checking…</strong>
+      </a>
       ·
-      <a id="status-metrics" class="pill" href="/metrics" target="_blank" rel="noopener">Requests: <strong>Loading…</strong></a>
+      <a id="status-metrics" class="pill" href="/metrics" target="_blank" rel="noopener">
+        Requests: <strong>Loading…</strong>
+      </a>
       ·
-      <a id="status-version" class="pill" href="/version" target="_blank" rel="noopener">Version: <strong>—</strong></a>
+      <a id="status-version" class="pill" href="/version" target="_blank" rel="noopener">
+        Version: <strong>—</strong>
+      </a>
     </footer>
   </div>
 
@@ -79,8 +88,14 @@
     <div class="modal-content">
       <h2>Disclaimer</h2>
       <p>
-        HGuard does not store private keys, seed phrases, or sensitive user data. Only public account information from Hedera Mirror Node API is fetched. Logs are hashed and anonymized (no PII).
-        Wallet validation and risk scores are informational only and do not constitute financial advice. ADCX Lab and HGuard are not liable for any losses arising from the use of this tool. This MVP is for research and compliance demonstration purposes under grant funding, not a regulated financial product.
+        HGuard does not store private keys, seed phrases, or sensitive user data.
+        Only public account information from Hedera Mirror Node API is fetched.
+        Logs are hashed and anonymized (no PII).
+        Wallet validation and risk scores are informational only and do not
+        constitute financial advice. ADCX Lab and HGuard are not liable for any
+        losses arising from the use of this tool. This MVP is for research and
+        compliance demonstration purposes under grant funding, not a regulated
+        financial product.
       </p>
       <div class="modal-actions">
         <button class="btn-danger" id="closeDisclaimer">Close</button>
@@ -88,7 +103,8 @@
     </div>
   </div>
 
-  <script src="/static/script.js"></script>
+  <!-- JS -->
+  <script src="/static/script.js" defer></script>
   <script src="/static/status.js" defer></script>
 </body>
 </html>
