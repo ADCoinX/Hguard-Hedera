@@ -1,13 +1,15 @@
 import os
 import re
-import httpx
 import time
-import datetime
 from pathlib import Path
+from urllib.parse import quote
+from datetime import datetime, timezone
+
+import httpx
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
-from markupsafe import escape  # For HTML sanitization
+from markupsafe import escape  # HTML-safe when reflecting back to UI
 
 # --- Konfigurasi ---
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,35 +22,47 @@ APP_VERSION = "0.2.0"
 HEDERA_MIRROR_NODE_API = "https://mainnet-public.mirrornode.hedera.com"
 START_TIME = time.time()
 
-# Regex untuk Hedera account ID (strict - no other chars allowed)
+# Regex untuk Hedera account ID (strict)
 ACCOUNT_ID_RE = re.compile(r"^0\.0\.\d{1,20}$")
 
 # Default setting untuk httpx
 HTTPX_KW = dict(timeout=8.0, follow_redirects=False)
 
+
 def is_valid_account(account_id: str) -> bool:
     """Strict validation for Hedera Account ID."""
     return bool(ACCOUNT_ID_RE.fullmatch(account_id or ""))
 
-def sanitize_xml(s: str) -> str:
-    """Basic XML escaping for user-controlled data."""
-    # Hedera Account ID only allows digits and dot, but for extra safety:
-    return escape(s)
+
+def xml_escape(s: str) -> str:
+    """Minimal XML escaping for user-controlled data."""
+    return (
+        (s or "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
+
 
 # --- UI (Homepage) ---
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 # --- API: VALIDATE ---
 @router.get("/validate")
 async def validate_account(accountId: str):
-    # Validate input (prevents user-controlled path construction)
+    # Validate input (hindar user-controlled path construction)
     if not is_valid_account(accountId):
         raise HTTPException(status_code=400, detail="Invalid Account ID format. Example: 0.0.123")
 
-    # All URLs below use validated accountId only
-    acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}"
+    # Encode path segment walaupun sudah validate (extra hardening)
+    path_safe_account = quote(accountId, safe=".")
+
+    acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{path_safe_account}"
     tx_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/transactions"
 
     async with httpx.AsyncClient(**HTTPX_KW) as client:
@@ -83,7 +97,7 @@ async def validate_account(accountId: str):
         t = t or {}
         last_5_tx.append(
             {
-                "transaction_id": escape(t.get("transaction_id", "")),  # sanitize for HTML/JSON
+                "transaction_id": escape(t.get("transaction_id", "")),
                 "result": escape(t.get("result", "")),
                 "consensus_timestamp": escape(t.get("consensus_timestamp", "")),
                 "name": escape(t.get("name", "")),
@@ -114,7 +128,7 @@ async def validate_account(accountId: str):
 
     score = max(0, min(100, score))
 
-    # All user-reflected data is escaped
+    # Semua data yang direfleksikan telah di-escape
     return {
         "accountId": escape(accountId),
         "balanceTinybar": int(balance_tinybar),
@@ -124,13 +138,15 @@ async def validate_account(accountId: str):
         "flags": flags,
     }
 
+
 # --- API: EXPORT ISO 20022 (pain.001) ---
 @router.get("/export/iso20022/pain001")
 async def export_iso(accountId: str):
     if not is_valid_account(accountId):
         raise HTTPException(status_code=400, detail="Invalid Account ID format. Example: 0.0.123")
 
-    acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}"
+    path_safe_account = quote(accountId, safe=".")
+    acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{path_safe_account}"
 
     async with httpx.AsyncClient(**HTTPX_KW) as client:
         try:
@@ -146,15 +162,16 @@ async def export_iso(accountId: str):
 
     balance_hbar = ((account_data.get("balance") or {}).get("balance") or 0) / 100_000_000
 
-    # Escape user-controlled data for XML reflection (extra strict)
-    safe_account_id = sanitize_xml(accountId)
+    # Escape untuk XML
+    safe_account_id = xml_escape(accountId)
+    now_utc = datetime.now(timezone.utc)
 
     xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03">
   <CstmrCdtTrfInitn>
     <GrpHdr>
-      <MsgId>HGUARD-RPT-{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}</MsgId>
-      <CreDtTm>{datetime.datetime.utcnow().isoformat()}</CreDtTm>
+      <MsgId>HGUARD-RPT-{now_utc.strftime('%Y%m%d%H%M%S')}</MsgId>
+      <CreDtTm>{now_utc.isoformat()}</CreDtTm>
       <NbOfTxs>1</NbOfTxs>
     </GrpHdr>
     <PmtInf>
@@ -173,6 +190,7 @@ async def export_iso(accountId: str):
         headers={"Content-Disposition": f'attachment; filename="HGuard-Report-{safe_account_id}.xml"'},
     )
 
+
 # --- METRICS (Prometheus) ---
 @router.get("/metrics")
 async def get_metrics(request: Request):
@@ -186,12 +204,14 @@ async def get_metrics(request: Request):
     ]
     return Response(content="\n".join(lines), media_type="text/plain; version=0.0.4")
 
+
 # --- VERSION ---
 @router.get("/version")
 async def get_version():
     return JSONResponse(
-        {"version": APP_VERSION, "timestamp": datetime.datetime.utcnow().isoformat()}
+        {"version": APP_VERSION, "timestamp": datetime.now(timezone.utc).isoformat()}
     )
+
 
 # --- HEALTH ---
 @router.get("/health")
