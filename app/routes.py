@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
-from markupsafe import escape  # Added for HTML sanitization
+from markupsafe import escape  # For HTML sanitization
 
 # --- Konfigurasi ---
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,37 +20,43 @@ APP_VERSION = "0.2.0"
 HEDERA_MIRROR_NODE_API = "https://mainnet-public.mirrornode.hedera.com"
 START_TIME = time.time()
 
-# Regex untuk Hedera account ID
+# Regex untuk Hedera account ID (strict - no other chars allowed)
 ACCOUNT_ID_RE = re.compile(r"^0\.0\.\d{1,20}$")
 
 # Default setting untuk httpx
 HTTPX_KW = dict(timeout=8.0, follow_redirects=False)
 
-
 def is_valid_account(account_id: str) -> bool:
-    return ACCOUNT_ID_RE.match(account_id or "") is not None
+    """Strict validation for Hedera Account ID."""
+    return bool(ACCOUNT_ID_RE.fullmatch(account_id or ""))
 
+def sanitize_xml(s: str) -> str:
+    """Basic XML escaping for user-controlled data."""
+    # Hedera Account ID only allows digits and dot, but for extra safety:
+    return escape(s)
 
 # --- UI (Homepage) ---
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-
 # --- API: VALIDATE ---
 @router.get("/validate")
 async def validate_account(accountId: str):
+    # Validate input (prevents user-controlled path construction)
     if not is_valid_account(accountId):
         raise HTTPException(status_code=400, detail="Invalid Account ID format. Example: 0.0.123")
 
+    # All URLs below use validated accountId only
+    acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}"
+    tx_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/transactions"
+
     async with httpx.AsyncClient(**HTTPX_KW) as client:
         try:
-            acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}"
             account_resp = await client.get(acc_url)
             account_resp.raise_for_status()
             account_data = account_resp.json() or {}
 
-            tx_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/transactions"
             tx_resp = await client.get(
                 tx_url,
                 params={"account.id": accountId, "limit": 100, "order": "desc"},
@@ -60,6 +66,7 @@ async def validate_account(accountId: str):
 
         except httpx.HTTPStatusError as e:
             if e.response is not None and e.response.status_code == 404:
+                # Escape output before reflecting to user
                 raise HTTPException(status_code=404, detail=f"Account {escape(accountId)} not found.")
             raise HTTPException(status_code=502, detail="Mirror Node error")
         except Exception:
@@ -76,7 +83,7 @@ async def validate_account(accountId: str):
         t = t or {}
         last_5_tx.append(
             {
-                "transaction_id": escape(t.get("transaction_id", "")),
+                "transaction_id": escape(t.get("transaction_id", "")),  # sanitize for HTML/JSON
                 "result": escape(t.get("result", "")),
                 "consensus_timestamp": escape(t.get("consensus_timestamp", "")),
                 "name": escape(t.get("name", "")),
@@ -107,6 +114,7 @@ async def validate_account(accountId: str):
 
     score = max(0, min(100, score))
 
+    # All user-reflected data is escaped
     return {
         "accountId": escape(accountId),
         "balanceTinybar": int(balance_tinybar),
@@ -116,16 +124,16 @@ async def validate_account(accountId: str):
         "flags": flags,
     }
 
-
 # --- API: EXPORT ISO 20022 (pain.001) ---
 @router.get("/export/iso20022/pain001")
 async def export_iso(accountId: str):
     if not is_valid_account(accountId):
         raise HTTPException(status_code=400, detail="Invalid Account ID format. Example: 0.0.123")
 
+    acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}"
+
     async with httpx.AsyncClient(**HTTPX_KW) as client:
         try:
-            acc_url = f"{HEDERA_MIRROR_NODE_API}/api/v1/accounts/{accountId}"
             account_resp = await client.get(acc_url)
             account_resp.raise_for_status()
             account_data = account_resp.json() or {}
@@ -138,6 +146,9 @@ async def export_iso(accountId: str):
 
     balance_hbar = ((account_data.get("balance") or {}).get("balance") or 0) / 100_000_000
 
+    # Escape user-controlled data for XML reflection (extra strict)
+    safe_account_id = sanitize_xml(accountId)
+
     xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03">
   <CstmrCdtTrfInitn>
@@ -147,10 +158,10 @@ async def export_iso(accountId: str):
       <NbOfTxs>1</NbOfTxs>
     </GrpHdr>
     <PmtInf>
-      <DbtrAcct><Id><Othr><Id>{accountId}</Id></Othr></Id></DbtrAcct>
+      <DbtrAcct><Id><Othr><Id>{safe_account_id}</Id></Othr></Id></DbtrAcct>
       <CdtTrfTxInf>
         <Amt><InstdAmt Ccy="HBAR">{balance_hbar:.8f}</InstdAmt></Amt>
-        <RmtInf><Ustrd>HGuard AML/CFT Report for Hedera Account {accountId}</Ustrd></RmtInf>
+        <RmtInf><Ustrd>HGuard AML/CFT Report for Hedera Account {safe_account_id}</Ustrd></RmtInf>
       </CdtTrfTxInf>
     </PmtInf>
   </CstmrCdtTrfInitn>
@@ -159,9 +170,8 @@ async def export_iso(accountId: str):
     return Response(
         content=xml_content,
         media_type="application/xml; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="HGuard-Report-{accountId}.xml"'},
+        headers={"Content-Disposition": f'attachment; filename="HGuard-Report-{safe_account_id}.xml"'},
     )
-
 
 # --- METRICS (Prometheus) ---
 @router.get("/metrics")
@@ -176,14 +186,12 @@ async def get_metrics(request: Request):
     ]
     return Response(content="\n".join(lines), media_type="text/plain; version=0.0.4")
 
-
 # --- VERSION ---
 @router.get("/version")
 async def get_version():
     return JSONResponse(
         {"version": APP_VERSION, "timestamp": datetime.datetime.utcnow().isoformat()}
     )
-
 
 # --- HEALTH ---
 @router.get("/health")
