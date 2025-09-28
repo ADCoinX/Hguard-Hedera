@@ -8,6 +8,15 @@ It provides **wallet validation**, **risk scoring**, and **ISO 20022 XML export*
 
 Developed by [ADCX Lab](https://autodigitalcoin.com).
 
+# HGuard – Hedera Wallet Validator 🔒  
+
+![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=ADCoinX_Hguard-Hedera&metric=alert_status)  
+![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=ADCoinX_Hguard-Hedera&metric=security_rating)  
+![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=ADCoinX_Hguard-Hedera&metric=sqale_rating)  
+![Bugs](https://sonarcloud.io/api/project_badges/measure?project=ADCoinX_Hguard-Hedera&metric=bugs)  
+![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=ADCoinX_Hguard-Hedera&metric=vulnerabilities)  
+![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=ADCoinX_Hguard-Hedera&metric=code_smells)  
+
 ---
 
 ## ✨ Features
